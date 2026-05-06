@@ -1,6 +1,8 @@
 import logging
+import pickle
 import threading
 from typing import Any
+from pathlib import Path
 
 from flask import Flask, jsonify, render_template
 
@@ -22,6 +24,33 @@ _latest: SensorSnapshot | None = None
 _poll_thread: threading.Thread | None = None
 _stop_poll = threading.Event()
 _poller_started = False
+_yield_model = None
+
+
+def _load_yield_model():
+    model_path = Path(__file__).resolve().parent / "model" / "temp_model.pkl"
+    if not model_path.exists():
+        return None
+    try:
+        with model_path.open("rb") as fp:
+            return pickle.load(fp)
+    except Exception as exc:
+        log.warning("Failed to load model from %s: %s", model_path, exc)
+        return None
+
+
+def _predict_chicken_yield(temperature: float | None, humidity: float | None) -> float | None:
+    if _yield_model is None or temperature is None or humidity is None:
+        return None
+    try:
+        intercept = float(_yield_model.get("intercept"))
+        coef_temp = float(_yield_model.get("coef_temperature_c"))
+        coef_humidity = float(_yield_model.get("coef_humidity_pct"))
+        predicted = intercept + coef_temp * float(temperature) + coef_humidity * float(humidity)
+        return round(float(predicted), 2)
+    except Exception as exc:
+        log.warning("Yield prediction failed: %s", exc)
+        return None
 
 
 def _particle_configured() -> bool:
@@ -107,7 +136,7 @@ def _poll_loop() -> None:
 
 def ensure_poller_started() -> None:
     """Start the Particle polling thread once (safe with Flask debug reloader)."""
-    global _settings, _poll_thread, _poller_started
+    global _settings, _poll_thread, _poller_started, _yield_model
     _ensure_logging_configured()
     if _poller_started:
         return
@@ -115,6 +144,7 @@ def ensure_poller_started() -> None:
         if _poller_started:
             return
         _settings = load_settings()
+        _yield_model = _load_yield_model()
         dev = _settings.get("particle_device_id") or ""
         dev_log = dev if len(dev) <= 16 else f"{dev[:12]}…"
         log.info(
@@ -161,9 +191,12 @@ def api_latest():
                 "cooling_status_label": "Unknown",
                 "particle_ok": False,
                 "error_message": "Waiting for first poll…",
+                "predicted_chicken_yield_kg": None,
             }
         )
-    return jsonify(snapshot_to_json(snap))
+    payload = snapshot_to_json(snap)
+    payload["predicted_chicken_yield_kg"] = _predict_chicken_yield(snap.temperature, snap.humidity)
+    return jsonify(payload)
 
 
 @app.route("/api/status")
