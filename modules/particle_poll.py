@@ -16,8 +16,8 @@ CANONICAL_FIELDS: tuple[tuple[str, bool], ...] = (
     ("temperature", False),
     ("humidity", False),
     ("smoke_level", False),
-    ("window_status", True),
-    ("cooling_status", True),
+    ("window_status", False),
+    ("cooling_status", False),
 )
 
 

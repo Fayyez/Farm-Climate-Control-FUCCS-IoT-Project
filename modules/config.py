@@ -29,8 +29,9 @@ def build_particle_variable_orders() -> dict[str, tuple[str, ...]]:
         "temperature": ("Temperature", "temperature", "temp"),
         "humidity": ("Humidity", "humidity", "hum", "relativeHumidity", "rh", "RH"),
         "smoke_level": ("SmokeLevel", "smoke_level", "smoke", "gas", "MQ2", "mq2"),
-        "window_status": ("window_status", "window", "WindowStatus"),
-        "cooling_status": ("cooling_status", "cooling", "CoolingStatus", "fan", "Fan"),
+        # farm-iot.ino exposes WindowOpen / CoolingOn (int 0/1) on the Argon / polled device.
+        "window_status": ("WindowOpen", "window_status", "window", "WindowStatus"),
+        "cooling_status": ("CoolingOn", "cooling_status", "cooling", "CoolingStatus", "fan", "Fan"),
     }
     overrides = {
         "temperature": "PARTICLE_VAR_TEMPERATURE",
