@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FUCCS IoT Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-color: #121212;
@@ -14,7 +13,13 @@
             --accent: #00e5ff;
             --success: #00e676;
             --danger: #ff1744;
+            --warn: #ffab40;
+            --smoke-clean: #69f0ae;
+            --smoke-mod: #ffab40;
+            --smoke-heavy: #ff5252;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -22,30 +27,24 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            min-height: 100vh;
         }
 
-        /* --- NEW HEADER STYLES --- */
         .dashboard-header {
-            width: 100%;
             max-width: 1400px;
+            margin: 0 auto 24px;
             background-color: var(--panel-bg);
             border-radius: 12px;
-            padding: 20px 30px;
-            margin-bottom: 25px;
+            padding: 20px 28px;
             box-shadow: 0 6px 12px rgba(0,0,0,0.4);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-sizing: border-box;
             border-bottom: 4px solid var(--accent);
         }
 
         .header-titles h1 {
             margin: 0;
-            color: var(--text-main);
             font-size: 2rem;
             letter-spacing: 1px;
             font-weight: 600;
@@ -68,115 +67,278 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            color: var(--success);
             font-weight: 600;
             font-size: 0.9rem;
-            background: rgba(0, 230, 118, 0.1);
             padding: 10px 20px;
             border-radius: 30px;
-            border: 1px solid rgba(0, 230, 118, 0.3);
             text-transform: uppercase;
             letter-spacing: 1px;
+            border: 1px solid transparent;
+        }
+
+        .header-status.ok {
+            color: var(--success);
+            background: rgba(0, 230, 118, 0.1);
+            border-color: rgba(0, 230, 118, 0.3);
+        }
+
+        .header-status.warn {
+            color: var(--warn);
+            background: rgba(255, 171, 64, 0.12);
+            border-color: rgba(255, 171, 64, 0.35);
         }
 
         .live-dot {
             width: 12px;
             height: 12px;
-            background-color: var(--success);
             border-radius: 50%;
+            background-color: currentColor;
             animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
-            70% { box-shadow: 0 0 0 8px rgba(0, 230, 118, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+            0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+            70% { box-shadow: 0 0 0 8px transparent; opacity: 0.85; }
+            100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
         }
-        /* ------------------------- */
 
-        .dashboard-wrapper {
+        .dashboard-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr; 
+            grid-template-columns: minmax(280px, 340px) 1fr;
+            grid-template-rows: auto 1fr auto;
             gap: 20px;
-            width: 100%;
             max-width: 1400px;
+            margin: 0 auto;
             align-items: stretch;
-        }
-
-        .left-column {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .right-column {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+            min-height: calc(100vh - 140px);
         }
 
         .panel {
             background-color: var(--panel-bg);
             border-radius: 12px;
-            padding: 20px;
+            padding: 20px 22px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             display: flex;
             flex-direction: column;
-            flex-grow: 1;
-            box-sizing: border-box;
         }
 
         .panel h2 {
-            margin-top: 0;
-            font-size: 1.2rem;
+            margin: 0 0 16px 0;
+            font-size: 1rem;
             color: var(--text-muted);
             border-bottom: 1px solid #333;
             padding-bottom: 10px;
-            margin-bottom: 15px;
             text-transform: uppercase;
             letter-spacing: 1px;
+            font-weight: 600;
         }
 
-        .actuator-grid {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            flex-grow: 1;
-            padding: 10px 0;
+        .left-overview {
+            grid-column: 1;
+            grid-row: 1 / -1;
         }
 
-        .actuator {
+        .overview-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
             display: flex;
             flex-direction: column;
+            gap: 14px;
+            flex: 1;
+        }
+
+        .overview-list li {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .overview-list li span:last-child {
+            color: var(--text-main);
+            font-weight: 500;
+            text-align: right;
+        }
+
+        .overview-note {
+            margin-top: auto;
+            padding-top: 18px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .right-stack {
+            grid-column: 2;
+            grid-row: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 0;
+        }
+
+        .panel-top-status .status-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 28px;
+            justify-content: flex-start;
             align-items: center;
-            gap: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
             color: var(--text-muted);
             font-weight: 500;
         }
 
-        .indicator {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            background-color: var(--danger); 
-            box-shadow: 0 0 15px rgba(255, 23, 68, 0.5);
-            transition: all 0.3s ease;
+        .pill {
+            min-width: 110px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+            border: 1px solid #333;
+            background: #252525;
+            color: var(--text-main);
         }
 
-        .indicator.on {
-            background-color: var(--success);
-            box-shadow: 0 0 20px rgba(0, 230, 118, 0.6);
+        .pill.on {
+            border-color: rgba(0, 230, 118, 0.45);
+            background: rgba(0, 230, 118, 0.12);
+            color: var(--success);
         }
 
-        .chart-container {
-            position: relative;
-            flex-grow: 1;
-            width: 100%;
-            min-height: 250px;
+        .pill.off {
+            border-color: rgba(255, 23, 68, 0.35);
+            background: rgba(255, 23, 68, 0.08);
+            color: #ff8a80;
         }
 
-        @media (max-width: 900px) {
-            .dashboard-wrapper {
+        .pill.unknown {
+            border-color: #444;
+            color: var(--text-muted);
+        }
+
+        .panel-main-metrics {
+            flex: 1;
+            min-height: 220px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            flex: 1;
+        }
+
+        .metric-card {
+            background: #252525;
+            border-radius: 10px;
+            padding: 18px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .metric-card .label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+
+        .metric-card .value {
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .metric-card .sub {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .smoke-category {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .smoke-category.clean {
+            background: rgba(105, 240, 174, 0.15);
+            color: var(--smoke-clean);
+            border: 1px solid rgba(105, 240, 174, 0.35);
+        }
+
+        .smoke-category.moderate {
+            background: rgba(255, 171, 64, 0.15);
+            color: var(--smoke-mod);
+            border: 1px solid rgba(255, 171, 64, 0.35);
+        }
+
+        .smoke-category.heavy {
+            background: rgba(255, 82, 82, 0.15);
+            color: var(--smoke-heavy);
+            border: 1px solid rgba(255, 82, 82, 0.35);
+        }
+
+        .smoke-category.unknown {
+            background: #2a2a2a;
+            color: var(--text-muted);
+            border: 1px solid #444;
+        }
+
+        .panel-ml {
+            min-height: 160px;
+            flex-shrink: 0;
+        }
+
+        .ml-placeholder {
+            flex: 1;
+            border: 1px dashed #444;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            text-align: center;
+            padding: 24px;
+            background: rgba(0,0,0,0.15);
+        }
+
+        #ml-panel-root {
+            display: none;
+            flex: 1;
+            min-height: 120px;
+        }
+
+        #ml-panel-root.active {
+            display: block;
+        }
+
+        @media (max-width: 960px) {
+            .dashboard-grid {
                 grid-template-columns: 1fr;
+                grid-template-rows: auto;
+            }
+            .left-overview {
+                grid-column: 1;
+                grid-row: auto;
+            }
+            .right-stack {
+                grid-column: 1;
+                grid-row: auto;
             }
             .dashboard-header {
                 flex-direction: column;
@@ -193,166 +355,157 @@
             <h1>FUCCS <span>Dashboard</span></h1>
             <p>Farm Utility & Climate Control in Sheds</p>
         </div>
-        <div class="header-status">
-            <span class="live-dot"></span> System Online
+        <div id="connection-banner" class="header-status warn">
+            <span class="live-dot"></span>
+            <span id="connection-text">Connecting…</span>
         </div>
     </header>
 
-    <div class="dashboard-wrapper">
-        
-        <div class="left-column">
-            <div class="panel">
-                <h2>Live Telemetry (Temp, O2, Humidity)</h2>
-                <div class="chart-container" style="min-height: 400px;">
-                    <canvas id="liveDataChart"></canvas>
+    <div class="dashboard-grid">
+        <aside class="panel left-overview">
+            <h2>System overview</h2>
+            <ul class="overview-list">
+                <li><span>Poll interval</span><span id="ov-poll-interval">—</span></li>
+                <li><span>Stored samples</span><span id="ov-records">—</span></li>
+                <li><span>Last update (UTC)</span><span id="ov-last-ts">—</span></li>
+                <li><span>Particle device</span><span id="ov-device">—</span></li>
+            </ul>
+            <p class="overview-note">
+                Telemetry is read from Particle Device Variables (hardware handles thresholds and control).
+                This dashboard only displays the latest polled values.
+            </p>
+        </aside>
+
+        <div class="right-stack">
+            <section class="panel panel-top-status">
+                <h2>Window &amp; cooling</h2>
+                <div class="status-row">
+                    <div class="status-item">
+                        <span>Window</span>
+                        <span id="window-pill" class="pill unknown">Unknown</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Cooling</span>
+                        <span id="cooling-pill" class="pill unknown">Unknown</span>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            <section class="panel panel-main-metrics">
+                <h2>Sensor readings</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="label">Temperature</span>
+                        <span id="metric-temp" class="value">—</span>
+                        <span class="sub">°C from device</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="label">Humidity</span>
+                        <span id="metric-hum" class="value">—</span>
+                        <span class="sub">% relative humidity</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="label">Smoke (MQ-2)</span>
+                        <span id="metric-smoke-raw" class="value">—</span>
+                        <span id="metric-smoke-cat" class="smoke-category unknown">—</span>
+                        <span class="sub">Raw 0–4035 · bands: &lt;500 clean · 500–1199 moderate · ≥1200 heavy</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel panel-ml">
+                <h2>ML predictions</h2>
+                <div id="ml-panel-placeholder" class="ml-placeholder">
+                    Reserved for future ML outputs (e.g. forecasts or anomaly scores).
+                    Wire models here via <code id="ml-hook-hint">#ml-panel-root</code>.
+                </div>
+                <div id="ml-panel-root" aria-hidden="true"></div>
+            </section>
         </div>
-
-        <div class="right-column">
-            
-            <div class="panel">
-                <h2>Actuator Status</h2>
-                <div class="actuator-grid">
-                    <div class="actuator">
-                        <div id="fan-status" class="indicator"></div>
-                        <span>Cooling System</span>
-                    </div>
-                    <div class="actuator">
-                        <div id="window-status" class="indicator"></div>
-                        <span>Vent/Window</span>
-                    </div>
-                    <div class="actuator">
-                        <div id="smoke-status" class="indicator"></div>
-                        <span>Smoke Levels</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="panel">
-                <h2>Temperature Prediction (Regression)</h2>
-                <div class="chart-container">
-                    <canvas id="regressionChart"></canvas>
-                </div>
-            </div>
-            
-        </div>
-
     </div>
 
     <script>
-        Chart.defaults.color = '#a0a0a0';
-        Chart.defaults.borderColor = '#333';
-        Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+        function smokeClass(category) {
+            if (!category) return 'unknown';
+            const c = category.toLowerCase();
+            if (c.includes('clean')) return 'clean';
+            if (c.includes('moderate')) return 'moderate';
+            if (c.includes('heavy')) return 'heavy';
+            return 'unknown';
+        }
 
-        // --- LEFT PANEL: LIVE DATA CHART ---
-        const liveCtx = document.getElementById('liveDataChart').getContext('2d');
-        const liveData = {
-            labels: [], 
-            datasets: [
-                { label: 'Temp (°C)', borderColor: '#ff5252', backgroundColor: 'rgba(255, 82, 82, 0.1)', data: [], tension: 0.4, fill: true },
-                { label: 'Humidity (%)', borderColor: '#448aff', backgroundColor: 'rgba(68, 138, 255, 0.1)', data: [], tension: 0.4, fill: true },
-                { label: 'Oxygen (%)', borderColor: '#69f0ae', backgroundColor: 'rgba(105, 240, 174, 0.1)', data: [], tension: 0.4, fill: true }
-            ]
-        };
-        const liveChart = new Chart(liveCtx, {
-            type: 'line',
-            data: liveData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                },
-                scales: {
-                    x: { title: { display: true, text: 'Time' }, grid: { display: false } },
-                    y: { grid: { color: '#2a2a2a' } }
-                },
-                animation: { duration: 0 } 
-            }
-        });
-
-        // --- BOTTOM RIGHT PANEL: REGRESSION MODEL CHART ---
-        const regCtx = document.getElementById('regressionChart').getContext('2d');
-        const regChart = new Chart(regCtx, {
-            type: 'scatter',
-            data: {
-                datasets: [
-                    {
-                        type: 'scatter',
-                        label: 'Historical Data',
-                        backgroundColor: '#ffb74d',
-                        data: [
-                            {x: 1, y: 24.1}, {x: 2, y: 24.5}, {x: 3, y: 25.0}, 
-                            {x: 4, y: 25.4}, {x: 5, y: 26.2}, {x: 6, y: 26.8}
-                        ]
-                    },
-                    {
-                        type: 'line',
-                        label: 'Predicted Trend',
-                        borderColor: '#b2ff59',
-                        borderDash: [5, 5],
-                        data: [
-                            {x: 0, y: 23.5}, {x: 10, y: 28.5} 
-                        ],
-                        tension: 0
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                },
-                scales: {
-                    x: { title: { display: true, text: 'Time Interval (Hours)' }, grid: { display: false } },
-                    y: { title: { display: true, text: 'Temperature (°C)' }, grid: { color: '#2a2a2a' } }
-                }
-            }
-        });
-
-        // --- SIMULATION LOGIC ---
-        setInterval(() => {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-            const temp = (25 + Math.random() * 2 - 1).toFixed(1);
-            const hum = (60 + Math.random() * 5 - 2.5).toFixed(1);
-            const o2 = (20.9 + Math.random() * 0.2 - 0.1).toFixed(2);
-
-            if (liveData.labels.length > 15) {
-                liveData.labels.shift();
-                liveData.datasets[0].data.shift();
-                liveData.datasets[1].data.shift();
-                liveData.datasets[2].data.shift();
-            }
-            
-            liveData.labels.push(timeString);
-            liveData.datasets[0].data.push(temp);
-            liveData.datasets[1].data.push(hum);
-            liveData.datasets[2].data.push(o2);
-            liveChart.update();
-
-            // --- ACTUATOR LOGIC ---
-            const fanIndicator = document.getElementById('fan-status');
-            const acIndicator = document.getElementById('ac-status');
-            const windowIndicator = document.getElementById('window-status');
-
-            if (temp > 25.5) {
-                acIndicator.classList.add('on');
-                fanIndicator.classList.add('on');
-                windowIndicator.classList.remove('on');
-            } else if (temp < 24.5) {
-                acIndicator.classList.remove('on');
-                fanIndicator.classList.remove('on');
-                windowIndicator.classList.remove('on');
+        function setPill(el, label, isOn) {
+            el.textContent = label;
+            el.classList.remove('on', 'off', 'unknown');
+            if (isOn === true) {
+                el.classList.add('on');
+            } else if (isOn === false) {
+                el.classList.add('off');
             } else {
-                acIndicator.classList.remove('on');
-                fanIndicator.classList.remove('on');
-                windowIndicator.classList.add('on');
+                el.classList.add('unknown');
             }
-        }, 2000); 
+        }
+
+        async function refresh() {
+            try {
+                const [latestRes, statusRes] = await Promise.all([
+                    fetch('/api/latest', { cache: 'no-store' }),
+                    fetch('/api/status', { cache: 'no-store' }),
+                ]);
+                const latest = await latestRes.json();
+                const status = await statusRes.json();
+
+                document.getElementById('ov-poll-interval').textContent =
+                    `${status.poll_interval_seconds ?? '—'} s`;
+                document.getElementById('ov-records').textContent =
+                    `${status.stored_records ?? '—'} / 1000`;
+                document.getElementById('ov-device').textContent =
+                    status.particle_configured ? 'Configured' : 'Not configured';
+
+                const banner = document.getElementById('connection-banner');
+                const bannerText = document.getElementById('connection-text');
+                if (latest.particle_ok) {
+                    banner.classList.remove('warn');
+                    banner.classList.add('ok');
+                    bannerText.textContent = 'Live data';
+                } else {
+                    banner.classList.remove('ok');
+                    banner.classList.add('warn');
+                    bannerText.textContent = latest.error_message || 'Check configuration';
+                }
+
+                document.getElementById('ov-last-ts').textContent =
+                    latest.timestamp_iso ? latest.timestamp_iso : '—';
+
+                document.getElementById('metric-temp').textContent =
+                    latest.temperature != null ? Number(latest.temperature).toFixed(1) : '—';
+                document.getElementById('metric-hum').textContent =
+                    latest.humidity != null ? Number(latest.humidity).toFixed(1) : '—';
+                document.getElementById('metric-smoke-raw').textContent =
+                    latest.smoke_level != null ? Math.round(Number(latest.smoke_level)) : '—';
+
+                const catEl = document.getElementById('metric-smoke-cat');
+                catEl.textContent = latest.smoke_category || '—';
+                catEl.className = 'smoke-category ' + smokeClass(latest.smoke_category);
+
+                const windowOpen = latest.window_open;
+                const windowLabel = latest.window_status_label || 'Unknown';
+                setPill(document.getElementById('window-pill'), windowLabel, windowOpen);
+
+                const coolingOn = latest.cooling_on;
+                const coolingLabel = latest.cooling_status_label || 'Unknown';
+                setPill(document.getElementById('cooling-pill'), coolingLabel, coolingOn);
+
+            } catch (e) {
+                const banner = document.getElementById('connection-banner');
+                banner.classList.remove('ok');
+                banner.classList.add('warn');
+                document.getElementById('connection-text').textContent = 'Dashboard API unreachable';
+            }
+        }
+
+        refresh();
+        setInterval(refresh, 4000);
     </script>
 </body>
 </html>
