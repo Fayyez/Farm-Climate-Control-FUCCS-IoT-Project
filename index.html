@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FUCCS IoT Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --accent: #00e5ff;
+            --success: #00e676;
+            --danger: #ff1744;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- NEW HEADER STYLES --- */
+        .dashboard-header {
+            width: 100%;
+            max-width: 1400px;
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 20px 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            border-bottom: 4px solid var(--accent);
+        }
+
+        .header-titles h1 {
+            margin: 0;
+            color: var(--text-main);
+            font-size: 2rem;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .header-titles h1 span {
+            color: var(--accent);
+            font-weight: 300;
+        }
+
+        .header-titles p {
+            margin: 8px 0 0 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--success);
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: rgba(0, 230, 118, 0.1);
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(0, 230, 118, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .live-dot {
+            width: 12px;
+            height: 12px;
+            background-color: var(--success);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(0, 230, 118, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+        }
+        /* ------------------------- */
+
+        .dashboard-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
+            align-items: stretch;
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            box-sizing: border-box;
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .actuator-grid {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-grow: 1;
+            padding: 10px 0;
+        }
+
+        .actuator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .indicator {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: var(--danger); 
+            box-shadow: 0 0 15px rgba(255, 23, 68, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .indicator.on {
+            background-color: var(--success);
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.6);
+        }
+
+        .chart-container {
+            position: relative;
+            flex-grow: 1;
+            width: 100%;
+            min-height: 250px;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-wrapper {
+                grid-template-columns: 1fr;
+            }
+            .dashboard-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="dashboard-header">
+        <div class="header-titles">
+            <h1>FUCCS <span>Dashboard</span></h1>
+            <p>Farm Utility & Climate Control in Sheds</p>
+        </div>
+        <div class="header-status">
+            <span class="live-dot"></span> System Online
+        </div>
+    </header>
+
+    <div class="dashboard-wrapper">
+        
+        <div class="left-column">
+            <div class="panel">
+                <h2>Live Telemetry (Temp, O2, Humidity)</h2>
+                <div class="chart-container" style="min-height: 400px;">
+                    <canvas id="liveDataChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-column">
+            
+            <div class="panel">
+                <h2>Actuator Status</h2>
+                <div class="actuator-grid">
+                    <div class="actuator">
+                        <div id="fan-status" class="indicator"></div>
+                        <span>Exhaust Fan</span>
+                    </div>
+                    <div class="actuator">
+                        <div id="ac-status" class="indicator"></div>
+                        <span>Air Conditioning</span>
+                    </div>
+                    <div class="actuator">
+                        <div id="window-status" class="indicator"></div>
+                        <span>Vent/Window</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Temperature Prediction (Regression)</h2>
+                <div class="chart-container">
+                    <canvas id="regressionChart"></canvas>
+                </div>
+            </div>
+            
+        </div>
+
+    </div>
+
+    <script>
+        Chart.defaults.color = '#a0a0a0';
+        Chart.defaults.borderColor = '#333';
+        Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+
+        // --- LEFT PANEL: LIVE DATA CHART ---
+        const liveCtx = document.getElementById('liveDataChart').getContext('2d');
+        const liveData = {
+            labels: [], 
+            datasets: [
+                { label: 'Temp (°C)', borderColor: '#ff5252', backgroundColor: 'rgba(255, 82, 82, 0.1)', data: [], tension: 0.4, fill: true },
+                { label: 'Humidity (%)', borderColor: '#448aff', backgroundColor: 'rgba(68, 138, 255, 0.1)', data: [], tension: 0.4, fill: true },
+                { label: 'Oxygen (%)', borderColor: '#69f0ae', backgroundColor: 'rgba(105, 240, 174, 0.1)', data: [], tension: 0.4, fill: true }
+            ]
+        };
+        const liveChart = new Chart(liveCtx, {
+            type: 'line',
+            data: liveData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Time' }, grid: { display: false } },
+                    y: { grid: { color: '#2a2a2a' } }
+                },
+                animation: { duration: 0 } 
+            }
+        });
+
+        // --- BOTTOM RIGHT PANEL: REGRESSION MODEL CHART ---
+        const regCtx = document.getElementById('regressionChart').getContext('2d');
+        const regChart = new Chart(regCtx, {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    {
+                        type: 'scatter',
+                        label: 'Historical Data',
+                        backgroundColor: '#ffb74d',
+                        data: [
+                            {x: 1, y: 24.1}, {x: 2, y: 24.5}, {x: 3, y: 25.0}, 
+                            {x: 4, y: 25.4}, {x: 5, y: 26.2}, {x: 6, y: 26.8}
+                        ]
+                    },
+                    {
+                        type: 'line',
+                        label: 'Predicted Trend',
+                        borderColor: '#b2ff59',
+                        borderDash: [5, 5],
+                        data: [
+                            {x: 0, y: 23.5}, {x: 10, y: 28.5} 
+                        ],
+                        tension: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Time Interval (Hours)' }, grid: { display: false } },
+                    y: { title: { display: true, text: 'Temperature (°C)' }, grid: { color: '#2a2a2a' } }
+                }
+            }
+        });
+
+        // --- SIMULATION LOGIC ---
+        setInterval(() => {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const temp = (25 + Math.random() * 2 - 1).toFixed(1);
+            const hum = (60 + Math.random() * 5 - 2.5).toFixed(1);
+            const o2 = (20.9 + Math.random() * 0.2 - 0.1).toFixed(2);
+
+            if (liveData.labels.length > 15) {
+                liveData.labels.shift();
+                liveData.datasets[0].data.shift();
+                liveData.datasets[1].data.shift();
+                liveData.datasets[2].data.shift();
+            }
+            
+            liveData.labels.push(timeString);
+            liveData.datasets[0].data.push(temp);
+            liveData.datasets[1].data.push(hum);
+            liveData.datasets[2].data.push(o2);
+            liveChart.update();
+
+            // --- ACTUATOR LOGIC ---
+            const fanIndicator = document.getElementById('fan-status');
+            const acIndicator = document.getElementById('ac-status');
+            const windowIndicator = document.getElementById('window-status');
+
+            if (temp > 25.5) {
+                acIndicator.classList.add('on');
+                fanIndicator.classList.add('on');
+                windowIndicator.classList.remove('on');
+            } else if (temp < 24.5) {
+                acIndicator.classList.remove('on');
+                fanIndicator.classList.remove('on');
+                windowIndicator.classList.remove('on');
+            } else {
+                acIndicator.classList.remove('on');
+                fanIndicator.classList.remove('on');
+                windowIndicator.classList.add('on');
+            }
+        }, 2000); 
+    </script>
+</body>
+</html>
