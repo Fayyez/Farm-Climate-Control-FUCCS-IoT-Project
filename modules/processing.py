@@ -39,9 +39,9 @@ def categorize_smoke_level(smoke_level: float | None) -> str | None:
     """
     if smoke_level is None:
         return None
-    if smoke_level < 500:
+    if smoke_level < 1000:
         return "Clean Air"
-    if smoke_level < 1200:
+    if smoke_level < 2200:
         return "Moderate"
     return "Heavy"
 
